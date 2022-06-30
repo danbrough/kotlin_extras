@@ -19,6 +19,14 @@ buildscript {
 }
 apply<Project_gradle.ProjectPlugin>()
 
+val buildCache by tasks.creating {
+  doLast {
+    println("OS NAME: ${System.getProperty("os.name")}")
+    println("BUILD CACHE DIR: ${ProjectProperties.getProperty("build.cache")}")
+  }
+}
+
+
 
 allprojects {
 

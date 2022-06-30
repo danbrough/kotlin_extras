@@ -18,4 +18,5 @@ rootProject.name = "kotlin_extras"
 
 include(":openssl")
 
-//include(":demo")
+
+include(":test")

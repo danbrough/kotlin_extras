@@ -5,9 +5,9 @@ import java.net.URI
 import java.util.*
 
 object ProjectProperties {
-  const val SDK_VERSION = 31
+  const val SDK_VERSION = 33
   const val MIN_SDK_VERSION = 23
-  const val BUILD_TOOLS_VERSION = "31.0.0"
+  const val BUILD_TOOLS_VERSION = "33.0.0"
   var KOTLIN_VERSION = "1.7.0"
   val JAVA_VERSION = JavaVersion.VERSION_11
   var VERSION_FORMAT = "0.0.1-%02d"
@@ -42,12 +42,11 @@ object ProjectProperties {
   private var isInitialized = false
   fun init(_project: Project) {
 
-    // println("INIT PROJECT PROPERTIES")
+    //println("INIT PROJECT PROPERTIES: initialized: $isInitialized")
     if (isInitialized) {
       return
     }
     isInitialized = true
-
 
     val project = _project.rootProject
     properties.putAll(project.properties)

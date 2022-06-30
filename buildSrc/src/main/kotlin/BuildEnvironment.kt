@@ -1,3 +1,6 @@
+@file:Suppress("MemberVisibilityCanBePrivate")
+
+import org.gradle.internal.impldep.org.codehaus.plexus.interpolation.os.Os
 import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithHostTests
@@ -10,11 +13,13 @@ object BuildEnvironment {
     get() = ProjectProperties.getProperty("go.binary", "/usr/bin/go")
   val gitBinary: String
     get() = ProjectProperties.getProperty("git.binary", "/usr/bin/git")
+
   val javah: String
     get() = ProjectProperties.getProperty("javah.path")
 
   val buildCacheDir: File
     get() = File(ProjectProperties.getProperty("build.cache"))
+
   val konanDir: File
     get() = File(
       ProjectProperties.getProperty(
@@ -28,33 +33,64 @@ object BuildEnvironment {
   val buildPath: List<String>
     get() = ProjectProperties.getProperty("build.path").split("[\\s]+".toRegex())
 
-  val hostPlatform = PlatformNative.LinuxX64
+  val hostIsWindows: Boolean
+    get() = System.getProperty("os.name").startsWith("Windows")
+
+  val hostIsMac: Boolean
+    get() = System.getProperty("os.name").startsWith("Mac")
+
+  val hostIsLinux: Boolean
+    get() = System.getProperty("os.name").startsWith("Linux")
+
+  val hostPlatform: PlatformNative<*>
+    get() = when {
+      hostIsLinux -> PlatformNative.LinuxX64
+      hostIsMac -> PlatformNative.MacosX64
+      hostIsWindows -> PlatformNative.MingwX64
+      else -> throw Error("Host ${System.getProperty("os.name")}:${System.getProperty("os.arch")} not supported")
+    }
 
   val nativeTargets: List<PlatformNative<*>>
-    get() = if (ProjectProperties.IDEA_ACTIVE) listOf(PlatformNative.LinuxX64) else listOf(
-      PlatformNative.LinuxX64,
-      PlatformNative.LinuxArm64,
-      PlatformNative.LinuxArm,
-      PlatformAndroid.AndroidArm,
-      PlatformAndroid.AndroidArm64,
-      PlatformAndroid.Android386,
-      PlatformAndroid.AndroidAmd64,
-      PlatformNative.MingwX64,
-      PlatformNative.MacosX64,
-    )
+    get() = mutableListOf<PlatformNative<*>>().apply {
+      if (ProjectProperties.IDEA_ACTIVE) add(hostPlatform) else {
 
-  val androidToolchainDir by lazy {
-    androidNdkDir.resolve("toolchains/llvm/prebuilt/linux-x86_64").also {
-      assert(it.exists()) {
-        "Failed to locate ${it.absolutePath}"
+        if (hostIsLinux) {
+          add(PlatformNative.LinuxX64)
+          add(PlatformNative.LinuxArm64)
+          add(PlatformNative.LinuxArm)
+          add(PlatformNative.MingwX64)
+        } else if (hostIsWindows) {
+          add(PlatformNative.MingwX64)
+        } else if (hostIsMac) {
+
+          add(PlatformNative.MacosX64)
+          add(PlatformNative.MacosArm64)
+        }
+
+        add(PlatformAndroid.AndroidArm)
+        add(PlatformAndroid.AndroidArm64)
+        add(PlatformAndroid.Android386)
+        add(PlatformAndroid.AndroidAmd64)
+
+        // PlatformNative.MacosX64,
       }
     }
+
+  val androidToolchainDir by lazy {
+    val toolchainDir = androidNdkDir.resolve("toolchains/llvm/prebuilt/linux-x86_64").let {
+      if (!it.exists())
+        androidNdkDir.resolve("toolchains/llvm/prebuilt/darwin-x86_64")
+      else it
+    }
+    if (!toolchainDir.exists()) throw Error("Failed to locate toolchain dir")
+    toolchainDir
   }
 
   val clangBinDir by lazy {
     File("$konanDir/dependencies").listFiles()?.first {
       it.isDirectory && it.name.contains("essentials")
-    }?.let { it.resolve("bin") } ?: throw Error("Failed to locate clang folder in ${konanDir}/dependencies")
+    }?.resolve("bin")
+      ?: throw Error("Failed to locate clang folder in ${konanDir}/dependencies")
   }
 
   fun environment(platform: PlatformNative<*>): Map<String, Any> = mutableMapOf(
@@ -74,6 +110,10 @@ object BuildEnvironment {
 
     val path = buildPath.toMutableList()
 
+    //this["AR"] =  "$clangBinDir/llvm-ar"
+    this["LD"] = "$clangBinDir/lld"
+    //this["RANLIB"] = "$clangBinDir/llvm-ar"
+
     when (platform) {
 
       PlatformNative.LinuxArm -> {
@@ -81,11 +121,14 @@ object BuildEnvironment {
           "--target=${platform.host} " + "--gcc-toolchain=$konanDir/dependencies/arm-unknown-linux-gnueabihf-gcc-8.3.0-glibc-2.19-kernel-4.9-2 " + "--sysroot=$konanDir/dependencies/arm-unknown-linux-gnueabihf-gcc-8.3.0-glibc-2.19-kernel-4.9-2/arm-unknown-linux-gnueabihf/sysroot "
         this["CC"] = "$clangBinDir/clang $clangArgs"
         this["CXX"] = "$clangBinDir/clang++ $clangArgs"
+        //this["RANLIB"] = "/Users/dan/Library/Android/sdk/ndk/23.1.7779620//toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ranlib"
+
       }
 
       PlatformNative.LinuxArm64 -> {
-        val clangArgs =
-          "--target=${platform.host} " + "--gcc-toolchain=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2 " + "--sysroot=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2/aarch64-unknown-linux-gnu/sysroot"
+        val clangArgs = "--target=${platform.host} " +
+            "--sysroot=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2/aarch64-unknown-linux-gnu/sysroot " +
+            "--gcc-toolchain=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2 "
         this["CC"] = "$clangBinDir/clang $clangArgs"
         this["CXX"] = "$clangBinDir/clang++ $clangArgs"
       }
@@ -100,6 +143,7 @@ object BuildEnvironment {
       }
 
       PlatformNative.MacosX64 -> {
+
 
       }
 
@@ -145,6 +189,7 @@ object BuildEnvironment {
     }
 
     this["PATH"] = path.joinToString(File.pathSeparator)
+
   }
 
 
@@ -197,7 +242,7 @@ enum class PlatformName {
       LinuxMips32 -> TODO()
       LinuxMipsel32 -> TODO()
       LinuxX64 -> TODO()
-      MacosArm64 -> TODO()
+      MacosArm64 -> PlatformNative.MacosArm64
       MacosX64 -> PlatformNative.MacosX64
       MingwX64 -> PlatformNative.MingwX64
       MingwX86 -> TODO()
@@ -249,6 +294,10 @@ open class PlatformNative<T : KotlinNativeTarget>(
 
   object MacosX64 : PlatformNative<KotlinNativeTargetWithHostTests>(
     PlatformName.MacosX64, "darwin64-x86_64-cc", GoOS.darwin, GoArch.amd64
+  )
+
+  object MacosArm64 : PlatformNative<KotlinNativeTargetWithHostTests>(
+    PlatformName.MacosArm64, "darwin64-aarch64-cc", GoOS.darwin, GoArch.arm64
   )
 }
 
