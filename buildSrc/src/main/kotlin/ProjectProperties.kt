@@ -23,7 +23,7 @@ object ProjectProperties {
   val NDK_VERSION = "23.1.7779620"
   var BUILD_VERSION = 1
   var VERSION_OFFSET = 1
-  lateinit var MAVEN_REPO: URI
+  lateinit var MAVEN_REPO: String
 
   var GROUP_ID = "com.github.danbrough.kipfs"
 
@@ -75,10 +75,8 @@ object ProjectProperties {
     VERSION_FORMAT = getProperty("versionFormat", "0.0.%d")
     KEYSTORE_PASSWORD = getProperty("KEYSTORE_PASSWORD", "")
 
-    MAVEN_REPO = URI.create(
-      project.findProperty("LOCAL_MAVEN_REPO")?.toString()?.trim()
-        ?: project.rootProject.buildDir.resolve(".m2").absolutePath
-    )
+    MAVEN_REPO = project.rootProject.buildDir.resolve("m2").toURI().toString()
+
   }
 
   fun getIncrementedVersionName() = getVersionName(BUILD_VERSION + 1)

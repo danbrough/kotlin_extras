@@ -62,6 +62,7 @@ object BuildEnvironment {
         } else if (hostIsWindows) {
           add(PlatformNative.MingwX64)
         } else if (hostIsMac) {
+          add(PlatformNative.LinuxX64)
 
           add(PlatformNative.MacosX64)
           add(PlatformNative.MacosArm64)

@@ -17,6 +17,7 @@ plugins {
 rootProject.name = "kotlin_extras"
 
 include(":openssl")
+//include(":curl")
 
 
 include(":test")

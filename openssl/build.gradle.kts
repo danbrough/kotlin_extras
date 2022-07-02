@@ -1,21 +1,18 @@
 import Common_gradle.Common.createTarget
 import Common_gradle.OpenSSL.opensslPrefix
 import org.gradle.configurationcache.extensions.capitalized
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
-
 
 //see: https://stackoverflow.com/questions/65397852/how-to-build-openssl-for-ios-and-osx
-
 
 plugins {
   kotlin("multiplatform")
   id("common")
-  `maven-publish`
 }
 
-val opensslTag = "OpenSSL_1_1_1o"
 //val opensslTag = "openssl-3.0.3"
+val opensslTag = "OpenSSL_1_1_1o"
+group = "com.github.danbrough.extras"
+version = opensslTag.substringAfter('_').replace('_', '.')
 
 /*
 pick os/compiler from:
@@ -66,10 +63,7 @@ val PlatformNative<*>.opensslPlatform
 
 
 val PlatformNative<*>.opensslSrcDir: File
-  get() = BuildEnvironment.buildCacheDir.resolve("openssl/$opensslTag/$name")
-
-group = ProjectProperties.GROUP_ID
-version = ProjectProperties.VERSION_NAME
+  get() = BuildEnvironment.buildCacheDir.resolve("openssl/$version/$name")
 
 
 val opensslGitDir = project.file("src/openssl.git")
@@ -94,9 +88,7 @@ fun srcPrepare(platform: PlatformNative<*>): Exec =
     val srcDir = platform.opensslSrcDir
     dependsOn(srcClone)
     onlyIf {
-      (!srcDir.exists()).also {
-        println("SRC_DIR $srcDir DOESNT EXIST: $it")
-      }
+      !srcDir.exists()
     }
     commandLine(
       BuildEnvironment.gitBinary, "clone", "--branch", opensslTag, opensslGitDir, srcDir
@@ -111,7 +103,7 @@ fun configureTask(platform: PlatformNative<*>): Exec {
   return tasks.create("configure${platform.name.toString().capitalized()}", Exec::class) {
     dependsOn(srcPrepare)
     workingDir(platform.opensslSrcDir)
-    println("configuring with platform: ${platform.opensslPlatform}")
+    //println("configuring with platform: ${platform.opensslPlatform}")
     environment(BuildEnvironment.environment(platform))
     val args = mutableListOf(
       "./Configure", platform.opensslPlatform,
@@ -149,7 +141,8 @@ fun buildTask(platform: PlatformNative<*>) {
     group = BasePlugin.BUILD_GROUP
     commandLine("make", "install_sw")
     doLast {
-      platform.opensslSrcDir.deleteRecursively()
+      if (!project.properties.getOrDefault("openssl.keepsrc", "false").toString().toBoolean())
+        platform.opensslSrcDir.deleteRecursively()
     }
 
   }
@@ -165,24 +158,24 @@ kotlin {
     }
   }
 
-  val nativeTest by sourceSets.creating
 
   BuildEnvironment.nativeTargets.forEach { platform ->
 
     createTarget(platform) {
 
       compilations["main"].apply {
+
         cinterops.create("openssl") {
-          defFile = project.file("src/openssl.def")
+          defFile(project.file("src/openssl.def"))
           extraOpts(listOf("-libraryPath", opensslPrefix(platform).resolve("lib")))
         }
+
+        dependencies {
+          //  implementation("com.github.danbrough.klog:klog:_")
+        }
+
       }
 
-      compilations["test"].apply {
-        defaultSourceSet {
-          dependsOn(nativeTest)
-        }
-      }
 
 /*      binaries {
         executable("testApp") {
@@ -195,41 +188,17 @@ kotlin {
   }
 }
 
+repositories {
+  maven("https://jitpack.io")
+  maven("https://h1.danbrough.org/maven")
+}
 
-publishing {
+/*publishing {
   publications {
   }
 
   repositories {
     maven(ProjectProperties.MAVEN_REPO)
   }
-}
+}*/
 
-
-/*
-echo OPENSSL is $OPENSSL
-CRYPTO_LIB=$OPENSSL/lib/libcrypto.a
-
-if [ -f $CRYPTO_LIB ]; then
-  echo not building openssl as $CRYPTO_LIB exists
-else
-  echo OPENSSL_PLATFORM $OPENSSL_PLATFORM
-  echo OPENSSL $OPENSSL
-  echo CC $CC CXX: $CXX
-  echo CFLAGS $CFLAGS
-  echo SYSROOT $SYSROOT
-  echo CROSS_PREFIX $CROSS_PREFIX
-  echo ANDROID_API $ANDROID_API
-  sleep 2
-
-  clean_src
-  cd $SRC
-
-  if [ "$GOOS" == "android" ]; then
-    ./Configure $OPENSSL_PLATFORM no-shared -D__ANDROID_API__=$ANDROID_API --prefix="$OPENSSL" $EXTRAS || exit 1
-  else
-    ./Configure --prefix="$OPENSSL" $OPENSSL_PLATFORM   $EXTRAS || exit 1
-  fi
-  make install_sw || exit 1
-fi
- */

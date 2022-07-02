@@ -6,12 +6,17 @@ plugins {
 }
 
 
+
 kotlin {
 
+  jvm()
+
   linuxX64()
+/*
   linuxArm32Hfp()
   linuxArm64()
   mingwX64()
+*/
 
   if (System.getProperty("os.name").startsWith("Mac")) {
     macosX64()
@@ -57,6 +62,20 @@ addTarget(presets.macosArm64)*/
     compilations["test"].apply {
       defaultSourceSet {
         dependsOn(nativeTest)
+      }
+    }
+  }
+
+  sourceSets {
+    commonMain {
+      dependencies {
+        implementation(Ktor.utils)
+      }
+    }
+
+    commonTest {
+      dependencies{
+        implementation(kotlin("test"))
       }
     }
   }
