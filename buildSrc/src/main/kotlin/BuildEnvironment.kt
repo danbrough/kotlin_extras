@@ -66,6 +66,7 @@ object BuildEnvironment {
 
           add(PlatformNative.MacosX64)
           add(PlatformNative.MacosArm64)
+          add(PlatformNative.IosX64)
         }
 
         add(PlatformAndroid.AndroidArm)
@@ -232,7 +233,7 @@ enum class PlatformName {
       IosArm32 -> TODO()
       IosArm64 -> TODO()
       IosSimulatorArm64 -> TODO()
-      IosX64 -> TODO()
+      IosX64 -> PlatformNative.IosX64
       JS -> TODO()
       JsBoth -> TODO()
       JsIr -> TODO()
@@ -295,6 +296,10 @@ open class PlatformNative<T : KotlinNativeTarget>(
 
   object MacosX64 : PlatformNative<KotlinNativeTargetWithHostTests>(
     PlatformName.MacosX64, "darwin64-x86_64-cc", GoOS.darwin, GoArch.amd64
+  )
+
+  object IosX64 : PlatformNative<KotlinNativeTargetWithHostTests>(
+    PlatformName.MacosArm64, "darwin64-x86_64-cc", GoOS.darwin, GoArch.arm64
   )
 
   object MacosArm64 : PlatformNative<KotlinNativeTargetWithHostTests>(
