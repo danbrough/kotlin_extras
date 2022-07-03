@@ -3,7 +3,16 @@
 import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithHostTests
+import org.jetbrains.kotlin.konan.target.KonanTarget
 import java.io.File
+
+val KonanTarget.displayName: String
+  get() = name.split('_').foldRight("") { a, b ->
+    "$a${b.capitalize()}"
+  }
+
+val KonanTarget.displayNameCapitalized: String
+  get() = displayName.capitalize()
 
 
 object BuildEnvironment {
