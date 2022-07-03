@@ -69,22 +69,15 @@ val PlatformNative<*>.opensslSrcDir: File
 val opensslGitDir = project.file("src/openssl.git")
 
 val srcClone by tasks.registering(Exec::class) {
-  commandLine(
-    BuildEnvironment.gitBinary,
-    "clone",
-    "--bare",
-    "https://github.com/openssl/openssl",
-    opensslGitDir
-  )
+  commandLine(BuildEnvironment.gitBinary, "clone", "--bare", "https://github.com/openssl/openssl", opensslGitDir)
   outputs.dir(opensslGitDir)
   onlyIf {
     !opensslGitDir.exists()
   }
-
 }
 
-fun srcPrepare(platform: PlatformNative<*>): Exec =
-  tasks.create("srcPrepare${platform.name.toString().capitalized()}", Exec::class) {
+fun srcPrepare(platform: PlatformNative<*>): TaskProvider<Exec> {
+  return tasks.register("srcPrepare${platform.name.toString().capitalized()}", Exec::class) {
     val srcDir = platform.opensslSrcDir
     dependsOn(srcClone)
     onlyIf {
@@ -94,13 +87,13 @@ fun srcPrepare(platform: PlatformNative<*>): Exec =
       BuildEnvironment.gitBinary, "clone", "--branch", opensslTag, opensslGitDir, srcDir
     )
   }
+}
 
-
-fun configureTask(platform: PlatformNative<*>): Exec {
+fun configureTask(platform: PlatformNative<*>): TaskProvider<Exec> {
 
   val srcPrepare = srcPrepare(platform)
 
-  return tasks.create("configure${platform.name.toString().capitalized()}", Exec::class) {
+  return tasks.register("configure${platform.name.toString().capitalized()}", Exec::class) {
     dependsOn(srcPrepare)
     workingDir(platform.opensslSrcDir)
     //println("configuring with platform: ${platform.opensslPlatform}")
@@ -127,7 +120,7 @@ fun buildTask(platform: PlatformNative<*>) {
 
     opensslPrefix(platform).resolve("lib/libssl.a").exists().also {
       isEnabled = !it
-      configureTask.isEnabled = !it
+      configureTask.get().isEnabled = !it
     }
     dependsOn(configureTask.name)
 
