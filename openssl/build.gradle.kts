@@ -158,7 +158,7 @@ kotlin {
 
       compilations["main"].apply {
 
-        cinterops.create("openssl") {
+        cinterops.create("openssl$platform") {
           defFile(project.file("src/openssl.def"))
           extraOpts(listOf("-libraryPath", opensslPrefix(platform).resolve("lib")))
         }
