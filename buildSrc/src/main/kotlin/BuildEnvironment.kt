@@ -1,6 +1,5 @@
 @file:Suppress("MemberVisibilityCanBePrivate")
 
-import org.gradle.internal.impldep.org.codehaus.plexus.interpolation.os.Os
 import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTargetWithHostTests
