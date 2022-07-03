@@ -11,7 +11,7 @@ plugins {
 
 //val opensslTag = "openssl-3.0.3"
 val opensslTag = "OpenSSL_1_1_1o"
-group = "com.github.danbrough.extras"
+group = "org.danbrough"
 version = opensslTag.substringAfter('_').replace('_', '.')
 
 /*
