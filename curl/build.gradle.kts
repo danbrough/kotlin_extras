@@ -115,7 +115,7 @@ kotlin {
 
 
   targets.withType<KotlinNativeTarget>().all {
-    println("Setting up target: ${konanTarget.displayNameCapitalized}")
+    //println("Setting up target: ${konanTarget.displayNameCapitalized}")
     compile(konanTarget)
   }
 

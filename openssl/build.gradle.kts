@@ -1,6 +1,7 @@
-import Common_gradle.Common.createTarget
-import Common_gradle.OpenSSL.opensslPrefix
-import org.gradle.configurationcache.extensions.capitalized
+import BuildEnvironment.buildEnvironment
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.konan.target.KonanTarget
+import org.jetbrains.kotlin.konan.target.Family
 
 //see: https://stackoverflow.com/questions/65397852/how-to-build-openssl-for-ios-and-osx
 
@@ -46,77 +47,120 @@ vxworks-ppc750-debug vxworks-ppc860 vxworks-ppcgen vxworks-simlinux debug
 debug-erbridge debug-linux-ia32-aes debug-linux-pentium debug-linux-ppro
 debug-test-64-clang
  */
-val PlatformNative<*>.opensslPlatform
+val KonanTarget.opensslPlatform
   get() = when (this) {
-    PlatformNative.LinuxX64 -> "linux-x86_64"
-    PlatformNative.LinuxArm64 -> "linux-aarch64"
+    KonanTarget.LINUX_X64 -> "linux-x86_64"
+    KonanTarget.LINUX_ARM64 -> "android-arm64"
+    KonanTarget.MACOS_X64 -> "darwin64-x86_64-cc"
+    /*PlatformNative.LinuxArm64 -> "linux-aarch64"
     PlatformNative.LinuxArm -> "linux-armv4"
     PlatformAndroid.AndroidArm -> "android-arm"
-    PlatformAndroid.AndroidArm64 -> "android-arm64"
+
     PlatformAndroid.Android386 -> "android-x86"
     PlatformAndroid.AndroidAmd64 -> "android-x86_64"
     PlatformNative.MingwX64 -> "mingw64"
     PlatformNative.MacosX64 -> "darwin64-x86_64-cc"
-    PlatformNative.MacosArm64 -> "darwin64-arm64-cc"
+    PlatformNative.MacosArm64 -> "darwin64-arm64-cc"*/
     else -> TODO("Add support for $this")
   }
 
 
-val PlatformNative<*>.opensslSrcDir: File
-  get() = BuildEnvironment.buildCacheDir.resolve("openssl/$version/$name")
+val opensslGitDir = project.buildDir.resolve("openssl.git")
 
+val KonanTarget.opensslSrcDir: File
+  get() = project.buildDir.resolve("openssl/$version/$displayName")
 
-val opensslGitDir = project.file("src/openssl.git")
+val KonanTarget.opensslPrefixDir: File
+  get() = rootProject.file("openssl/lib/${displayName}")
 
 val srcClone by tasks.registering(Exec::class) {
   commandLine(BuildEnvironment.gitBinary, "clone", "--bare", "https://github.com/openssl/openssl", opensslGitDir)
   outputs.dir(opensslGitDir)
-  onlyIf {
-    !opensslGitDir.exists()
-  }
+  onlyIf { !opensslGitDir.exists() }
 }
 
-fun srcPrepare(platform: PlatformNative<*>): TaskProvider<Exec> {
-  return tasks.register("srcPrepare${platform.name.toString().capitalized()}", Exec::class) {
-    val srcDir = platform.opensslSrcDir
+fun srcPrepare(target: KonanTarget): TaskProvider<Exec> {
+  return tasks.register("srcPrepare${target.displayNameCapitalized}", Exec::class) {
+    val srcDir = target.opensslSrcDir
     dependsOn(srcClone)
-    onlyIf {
-      !srcDir.exists()
-    }
-    commandLine(
-      BuildEnvironment.gitBinary, "clone", "--branch", opensslTag, opensslGitDir, srcDir
-    )
+    onlyIf { !srcDir.exists() }
+    commandLine(BuildEnvironment.gitBinary, "clone", "--branch", opensslTag, opensslGitDir, srcDir)
   }
 }
 
-fun configureTask(platform: PlatformNative<*>): TaskProvider<Exec> {
+fun configureTask(target: KonanTarget): TaskProvider<Exec> {
 
-  val srcPrepare = srcPrepare(platform)
+  val srcPrepare = srcPrepare(target)
 
-  return tasks.register("configure${platform.name.toString().capitalized()}", Exec::class) {
+  return tasks.register("configure${target.displayNameCapitalized}", Exec::class) {
     dependsOn(srcPrepare)
-    workingDir(platform.opensslSrcDir)
+    workingDir(target.opensslSrcDir)
     //println("configuring with platform: ${platform.opensslPlatform}")
-    environment(BuildEnvironment.environment(platform))
+    //environment(BuildEnvironment.environment(platform))
+
+
+    val env = target.buildEnvironment
+
+    environment(env)
+
     val args = mutableListOf(
-      "./Configure", platform.opensslPlatform,
-      //"no-shared",
-      "no-tests", "--prefix=${opensslPrefix(platform)}"
-    )
-    if (platform.isAndroid) args += "-D__ANDROID_API__=${BuildEnvironment.androidNdkApiVersion} "
-    else if (platform.isWindows) args += "--cross-compile-prefix=${platform.host}-"
+      "./Configure", target.opensslPlatform,
+      "no-tests", "--prefix=${target.opensslPrefixDir}"
+    ).apply {
+      if (target.family == Family.ANDROID) add("-D__ANDROID_API__=${BuildEnvironment.androidNdkApiVersion} ")
+      else if (target.family == Family.MINGW) add("--cross-compile-prefix=${target.host}-")
+    }
+
+
+
     commandLine(args)
     doFirst {
-      println("ENVIRONMENT: ${BuildEnvironment.environment(platform)}")
-      println("RUNNING $args")
+      println("WORK DIR: $workingDir")
+      println("ENV: $env")
+      println("RUNNING ${args.joinToString(" ")}")
     }
   }
 }
 
-fun buildTask(platform: PlatformNative<*>) {
-  val configureTask = configureTask(platform)
 
-  tasks.create("build${platform.name.toString().capitalized()}", Exec::class) {
+fun compileTask(target: KonanTarget): TaskProvider<Exec> {
+  val configureTask = configureTask(target)
+
+  return tasks.register<Exec>("compile${target.displayNameCapitalized}") {
+    target.opensslPrefixDir.resolve("lib/libssl.a").exists().also {
+      isEnabled = !it
+      configureTask.get().isEnabled = !it
+    }
+    commandLine("make", "install_sw")
+
+    dependsOn(configureTask)
+
+  }
+}
+
+kotlin {
+  linuxX64()
+  linuxArm64()
+  macosX64()
+
+  val buildAll by tasks.creating {
+    group = BasePlugin.BUILD_GROUP
+    description = "Builds openssl for all configured targets"
+  }
+
+  targets.withType<KotlinNativeTarget>().all {
+    compileTask(konanTarget).also {
+      buildAll.dependsOn(this)
+    }
+
+  }
+}
+
+/*fun buildTask(target: KotlinNativeTarget) {
+  val configureTask = configureTask(target)
+
+
+ tasks.create("build${platform.name.toString().capitalized()}", Exec::class) {
 
     opensslPrefix(platform).resolve("lib/libssl.a").exists().also {
       isEnabled = !it
@@ -137,10 +181,8 @@ fun buildTask(platform: PlatformNative<*>) {
       if (!project.properties.getOrDefault("openssl.keepsrc", "false").toString().toBoolean())
         platform.opensslSrcDir.deleteRecursively()
     }
-
   }
-}
-
+}*/
 
 kotlin {
 
@@ -151,9 +193,17 @@ kotlin {
     }
   }
 
+  linuxX64()
+  macosX64()
 
-  BuildEnvironment.nativeTargets.forEach { platform ->
 
+  targets.withType<KotlinNativeTarget>().all {
+    cinterops.create("openssl$platform") {
+      defFile(project.file("src/openssl.def"))
+      extraOpts(listOf("-libraryPath", opensslPrefix(platform).resolve("lib")))
+    }
+  }
+/*
     createTarget(platform) {
 
       compilations["main"].apply {
@@ -170,19 +220,18 @@ kotlin {
       }
 
 
-/*      binaries {
+*//*      binaries {
         executable("testApp") {
           entryPoint = "openssl.TestApp"
         }
-      }*/
+      }*//*
     }
 
     buildTask(platform)
-  }
+  }*/
 }
 
 repositories {
-  maven("https://jitpack.io")
   maven("https://h1.danbrough.org/maven")
 }
 

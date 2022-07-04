@@ -8,23 +8,10 @@ import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.KotlinTargetPreset
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-
-object Common {
-
-
-  @Suppress("UNCHECKED_CAST")
-  fun <T : KotlinTarget> Project.createTarget(
-    platform: Platform<T>, targetName: String = platform.name.toString(), conf: T.() -> Unit = {}
-  ): T {
-    val extn = kotlinExtension as KotlinMultiplatformExtension
-    val preset: KotlinTargetPreset<T> =
-      extn.presets.getByName(platform.name.toString()) as KotlinTargetPreset<T>
-    return extn.targetFromPreset(preset, targetName, conf)
-  }
+import org.jetbrains.kotlin.konan.target.KonanTarget
 
 
-}
-
+/*
 object GoLib {
 
 
@@ -43,12 +30,11 @@ object GoLib {
     rootProject.file("golib/build/lib/${platform.name}")
 
 
-}
+}*/
 
 object OpenSSL {
 
-  fun Project.opensslPrefix(platform: PlatformNative<*>) =
-    rootProject.file("openssl/lib/${platform.name}")
+
 
 }
 
@@ -65,6 +51,7 @@ abstract class GreetingTask : DefaultTask() {
 
 
 
+/*
 tasks.register("styleTest") {
   doLast {
     val out = project.serviceOf<StyledTextOutputFactory>().create("testOutput")
@@ -77,9 +64,12 @@ tasks.register("styleTest") {
     }
   }
 }
+*/
+
+
 
 abstract class GoLibBuildTask<T : KotlinNativeTarget> @Inject constructor(
-  private val platform: PlatformNative<T>,
+  private val target: KonanTarget,
   private val goDir: File,
   private val outputDir: File,
   private val outputBaseName: String,
@@ -91,7 +81,7 @@ abstract class GoLibBuildTask<T : KotlinNativeTarget> @Inject constructor(
     group = BasePlugin.BUILD_GROUP
     // println("PLATFORM $platform  godir: $goDir: libDir: ${libDir.orNull}")
 
-    environment("PLATFORM", platform.name.toString())
+    environment("PLATFORM", target.displayName)
 
 
     inputs.files(project.fileTree(goDir) {
@@ -109,7 +99,7 @@ abstract class GoLibBuildTask<T : KotlinNativeTarget> @Inject constructor(
 
     workingDir(goDir)
 
-    val commandEnvironment = BuildEnvironment.environment(platform)
+    val commandEnvironment = BuildEnvironment.buildEnvironment(target)
     environment(commandEnvironment)
 
     commandLine(
@@ -123,14 +113,14 @@ abstract class GoLibBuildTask<T : KotlinNativeTarget> @Inject constructor(
     val out = project.serviceOf<StyledTextOutputFactory>().create("golibOutput")
 
     doFirst {
-      out.style(StyledTextOutput.Style.Info).println("Building golib for $platform")
+      out.style(StyledTextOutput.Style.Info).println("Building golib for $this")
       out.style(StyledTextOutput.Style.ProgressStatus).println("environment: $commandEnvironment")
       out.style(StyledTextOutput.Style.ProgressStatus)
         .println("commandLine: ${commandLine.joinToString(" ")}")
     }
     doLast {
       if (didWork) out.style(StyledTextOutput.Style.Success)
-        .println("Finished building golib for $platform")
+        .println("Finished building golib for $this")
     }
   }
 
