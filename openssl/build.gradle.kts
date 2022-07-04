@@ -50,7 +50,8 @@ debug-test-64-clang
 val KonanTarget.opensslPlatform
   get() = when (this) {
     KonanTarget.LINUX_X64 -> "linux-x86_64"
-    KonanTarget.LINUX_ARM64 -> "android-arm64"
+    KonanTarget.LINUX_ARM64 -> "linux-arm64"
+    KonanTarget.LINUX_ARM32_HFP -> "linux-armv4"
     KonanTarget.MACOS_X64 -> "darwin64-x86_64-cc"
     /*PlatformNative.LinuxArm64 -> "linux-aarch64"
     PlatformNative.LinuxArm -> "linux-armv4"
