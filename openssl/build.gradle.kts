@@ -84,7 +84,7 @@ fun srcPrepare(target: KonanTarget): TaskProvider<Exec> {
     val srcDir = target.opensslSrcDir
     dependsOn(srcClone)
     onlyIf { !srcDir.exists() }
-    commandLine(BuildEnvironment.gitBinary, "clone", "--branch", opensslTag, opensslGitDir, srcDir)
+    commandLine(BuildEnvironment.gitBinary, "clone", "-v","--branch", opensslTag, opensslGitDir, srcDir)
   }
 }
 
