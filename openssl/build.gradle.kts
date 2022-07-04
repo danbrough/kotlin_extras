@@ -133,6 +133,8 @@ fun compileTask(target: KonanTarget): TaskProvider<Exec> {
       isEnabled = !it
       configureTask.get().isEnabled = !it
     }
+    workingDir(target.opensslSrcDir)
+
     commandLine("make", "install_sw")
 
 
