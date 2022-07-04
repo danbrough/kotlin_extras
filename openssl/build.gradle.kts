@@ -75,7 +75,7 @@ val KonanTarget.opensslPlatform
 val opensslGitDir = project.buildDir.resolve("openssl.git")
 
 val KonanTarget.opensslSrcDir: File
-  get() = project.buildDir.resolve("openssl/$version/$displayName")
+  get() = project.buildDir.resolve("src/$version/$displayName")
 
 val KonanTarget.opensslPrefixDir: File
   get() = rootProject.file("openssl/lib/${displayName}")
@@ -167,8 +167,11 @@ fun compileTask(target: KonanTarget): TaskProvider<Exec> {
 
 
     doLast {
+      println("FINISHED .. getting executing result ..")
       executionResult.get().also {
+        println("EXEC RESULT: $it")
         if (it.exitValue == 0 && target.opensslSrcDir.exists()) {
+          println("DELETING: ${target.opensslSrcDir}")
           target.opensslSrcDir.deleteRecursively()
         }
       }
@@ -183,7 +186,10 @@ kotlin {
   linuxArm32Hfp()
 
   mingwX64()
-  macosX64()
+
+  if (BuildEnvironment.hostIsMac) {
+    macosX64()
+  }
 
   androidNativeArm32()
   androidNativeArm64()
@@ -197,7 +203,7 @@ kotlin {
 
   targets.withType<KotlinNativeTarget>().all {
     compileTask(konanTarget).also {
-      compileAll.dependsOn(this)
+      compileAll.dependsOn(it)
     }
 
   }
