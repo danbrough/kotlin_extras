@@ -127,13 +127,14 @@ fun compileTask(target: KonanTarget): TaskProvider<Exec> {
   val configureTask = configureTask(target)
 
   return tasks.register<Exec>("compile${target.displayNameCapitalized}") {
+    dependsOn(configureTask)
+
     target.opensslPrefixDir.resolve("lib/libssl.a").exists().also {
       isEnabled = !it
       configureTask.get().isEnabled = !it
     }
     commandLine("make", "install_sw")
 
-    dependsOn(configureTask)
 
   }
 }
