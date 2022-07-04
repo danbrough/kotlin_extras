@@ -53,7 +53,12 @@ val KonanTarget.opensslPlatform
     KonanTarget.LINUX_ARM64 -> "linux-aarch64"
     KonanTarget.LINUX_ARM32_HFP -> "linux-armv4"
     KonanTarget.MACOS_X64 -> "darwin64-x86_64-cc"
+    KonanTarget.MACOS_ARM64 -> "darwin64-arm64-cc"
     KonanTarget.MINGW_X64 -> "mingw64"
+    KonanTarget.ANDROID_ARM32 -> "android-arm"
+    KonanTarget.ANDROID_ARM64 -> "android-arm64"
+    KonanTarget.ANDROID_X86 -> "android-x86"
+    KonanTarget.ANDROID_X64 -> "android-x86_64"
     /*PlatformNative.LinuxArm64 -> "linux-aarch64"
     PlatformNative.LinuxArm -> "linux-armv4"
     PlatformAndroid.AndroidArm -> "android-arm"
@@ -76,7 +81,13 @@ val KonanTarget.opensslPrefixDir: File
   get() = rootProject.file("openssl/lib/${displayName}")
 
 val srcClone by tasks.registering(Exec::class) {
-  commandLine(BuildEnvironment.gitBinary, "clone", "--bare", "https://github.com/openssl/openssl", opensslGitDir)
+  commandLine(
+    BuildEnvironment.gitBinary,
+    "clone",
+    "--bare",
+    "https://github.com/openssl/openssl",
+    opensslGitDir
+  )
   outputs.dir(opensslGitDir)
   onlyIf { !opensslGitDir.exists() }
 }
@@ -86,7 +97,15 @@ fun srcPrepare(target: KonanTarget): TaskProvider<Exec> {
     val srcDir = target.opensslSrcDir
     dependsOn(srcClone)
     onlyIf { !srcDir.exists() }
-    commandLine(BuildEnvironment.gitBinary, "clone", "-v","--branch", opensslTag, opensslGitDir, srcDir)
+    commandLine(
+      BuildEnvironment.gitBinary,
+      "clone",
+      "-v",
+      "--branch",
+      opensslTag,
+      opensslGitDir,
+      srcDir
+    )
   }
 }
 
@@ -108,19 +127,25 @@ fun configureTask(target: KonanTarget): TaskProvider<Exec> {
     val args = mutableListOf(
       "./Configure", target.opensslPlatform,
       "no-tests", "--prefix=${target.opensslPrefixDir}"
-    ).apply {
-      if (target.family == Family.ANDROID) add("-D__ANDROID_API__=${BuildEnvironment.androidNdkApiVersion} ")
-      else if (target.family == Family.MINGW) add("--cross-compile-prefix=${target.host}-")
+    )
+
+    when (target.family) {
+      Family.ANDROID ->
+        args.add("-D__ANDROID_API__=${BuildEnvironment.androidNdkApiVersion} ")
+      Family.MINGW ->
+        args.add("--cross-compile-prefix=${target.host}-")
+      else -> {}
     }
 
-
-
     commandLine(args)
+
     doFirst {
       println("WORK DIR: $workingDir")
       println("ENV: $env")
+      println("CC: ${env["CC"]}")
       println("RUNNING ${args.joinToString(" ")}")
     }
+
   }
 }
 
@@ -131,13 +156,24 @@ fun compileTask(target: KonanTarget): TaskProvider<Exec> {
   return tasks.register<Exec>("compile${target.displayNameCapitalized}") {
     dependsOn(configureTask)
     environment(target.buildEnvironment)
+    workingDir(target.opensslSrcDir)
 
     target.opensslPrefixDir.resolve("lib/libssl.a").exists().also {
       isEnabled = !it
       configureTask.get().isEnabled = !it
     }
-    workingDir(target.opensslSrcDir)
     commandLine("make", "install_sw")
+
+
+
+    doLast {
+      executionResult.get().also {
+        if (it.exitValue == 0 && target.opensslSrcDir.exists()) {
+          target.opensslSrcDir.deleteRecursively()
+        }
+      }
+    }
+
   }
 }
 
@@ -149,14 +185,19 @@ kotlin {
   mingwX64()
   macosX64()
 
-  val buildAll by tasks.creating {
+  androidNativeArm32()
+  androidNativeArm64()
+  androidNativeX86()
+  androidNativeX64()
+
+  val compileAll by tasks.creating {
     group = BasePlugin.BUILD_GROUP
     description = "Builds openssl for all configured targets"
   }
 
   targets.withType<KotlinNativeTarget>().all {
     compileTask(konanTarget).also {
-      buildAll.dependsOn(this)
+      compileAll.dependsOn(this)
     }
 
   }

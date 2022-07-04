@@ -57,9 +57,15 @@ val KonanTarget.host: String
     KonanTarget.LINUX_ARM64 -> "aarch64-unknown-linux-gnu"
     KonanTarget.LINUX_ARM32_HFP -> "arm-unknown-linux-gnueabihf"
 
-    KonanTarget.MACOS_X64 -> "darwin64-x86_64-cc"
+    KonanTarget.MACOS_X64, KonanTarget.IOS_X64 -> "darwin64-x86_64-cc"
+    KonanTarget.MACOS_ARM64, KonanTarget.IOS_ARM64, KonanTarget.IOS_SIMULATOR_ARM64 -> "darwin64-aarch64-cc"
+
     KonanTarget.MINGW_X64 -> "x86_64-w64-mingw32"
 
+    KonanTarget.ANDROID_X64 -> "x86_64-linux-android"
+    KonanTarget.ANDROID_X86 -> "i686-linux-android"
+    KonanTarget.ANDROID_ARM64 -> "aarch64-linux-android"
+    KonanTarget.ANDROID_ARM32 -> "armv7a-linux-androideabi"
 
     else -> TODO("Add host support for $this")
   }
@@ -145,9 +151,7 @@ object BuildEnvironment {
       "GOPATH" to goCacheDir.resolve(displayName),
       "KONAN_DATA_DIR" to goCacheDir.resolve("konan"),
       "CFLAGS" to "-O3  -Wno-macro-redefined -Wno-deprecated-declarations -DOPENSSL_SMALL_FOOTPRINT=1",
-      "MAKE" to "make -j${Runtime.getRuntime().availableProcessors() + 1}".also {
-                                                                                println("MAKE = $it")
-      },
+      "MAKE" to "make -j${Runtime.getRuntime().availableProcessors() + 1}",
     ).also { env ->
       val path = buildPath.toMutableList()
 
@@ -169,9 +173,9 @@ object BuildEnvironment {
 
         KonanTarget.LINUX_ARM64 -> {
           println("Configuring Linux ARM64 path here")
-          val clangArgs = "--target=$host " +
-              "--sysroot=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2/aarch64-unknown-linux-gnu/sysroot " +
-              "--gcc-toolchain=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2 "
+          val clangArgs =
+            "--target=$host --sysroot=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2/aarch64-unknown-linux-gnu/sysroot " +
+                "--gcc-toolchain=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2 "
           env["CC"] = "$clangBinDir/clang $clangArgs"
           env["CXX"] = "$clangBinDir/clang++ $clangArgs"
         }
@@ -219,6 +223,14 @@ object BuildEnvironment {
           env["CXX"] = "g++"
 
 
+        }
+
+        KonanTarget.ANDROID_ARM32, KonanTarget.ANDROID_ARM64, KonanTarget.ANDROID_X86, KonanTarget.ANDROID_X64 -> {
+          path.add(0, androidToolchainDir.resolve("bin").absolutePath)
+          env["CC"] = "${host}${androidNdkApiVersion}-clang"
+          env["CXX"] = "${host}${androidNdkApiVersion}-clang++"
+          env["AR"] = "llvm-ar"
+          env["RANLIB"] = "llvm-ranlib"
         }
 /*
         PlatformAndroid.AndroidArm, PlatformAndroid.Android386, PlatformAndroid.AndroidArm64, PlatformAndroid.AndroidAmd64 -> {
@@ -352,7 +364,7 @@ open class PlatformAndroid<T : KotlinNativeTarget>(
 
   object AndroidArm : PlatformAndroid<KotlinNativeTarget>(
     PlatformName.AndroidNativeArm32,
-    "armv7a-linux-androideabi",
+
     GoOS.android,
     GoArch.arm,
     androidLibDir = "armeabi-v7a"
@@ -360,7 +372,7 @@ open class PlatformAndroid<T : KotlinNativeTarget>(
 
   object AndroidArm64 : PlatformAndroid<KotlinNativeTarget>(
     PlatformName.AndroidNativeArm64,
-    "aarch64-linux-android",
+
     GoOS.android,
     GoArch.arm64,
     androidLibDir = "arm64-v8a",
@@ -368,7 +380,7 @@ open class PlatformAndroid<T : KotlinNativeTarget>(
 
   object Android386 : PlatformAndroid<KotlinNativeTarget>(
     PlatformName.AndroidNativeX86,
-    "i686-linux-android",
+
     GoOS.android,
     GoArch.x86,
     androidLibDir = "x86",
@@ -376,7 +388,7 @@ open class PlatformAndroid<T : KotlinNativeTarget>(
 
   object AndroidAmd64 : PlatformAndroid<KotlinNativeTarget>(
     PlatformName.AndroidNativeX64,
-    "x86_64-linux-android",
+
     GoOS.android,
     GoArch.amd64,
     androidLibDir = "x86_64",
