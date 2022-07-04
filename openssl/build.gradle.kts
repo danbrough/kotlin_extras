@@ -50,9 +50,10 @@ debug-test-64-clang
 val KonanTarget.opensslPlatform
   get() = when (this) {
     KonanTarget.LINUX_X64 -> "linux-x86_64"
-    KonanTarget.LINUX_ARM64 -> "linux-arm64"
+    KonanTarget.LINUX_ARM64 -> "linux-aarch64"
     KonanTarget.LINUX_ARM32_HFP -> "linux-armv4"
     KonanTarget.MACOS_X64 -> "darwin64-x86_64-cc"
+    KonanTarget.MINGW_X64 -> "mingw64"
     /*PlatformNative.LinuxArm64 -> "linux-aarch64"
     PlatformNative.LinuxArm -> "linux-armv4"
     PlatformAndroid.AndroidArm -> "android-arm"
@@ -62,7 +63,7 @@ val KonanTarget.opensslPlatform
     PlatformNative.MingwX64 -> "mingw64"
     PlatformNative.MacosX64 -> "darwin64-x86_64-cc"
     PlatformNative.MacosArm64 -> "darwin64-arm64-cc"*/
-    else -> TODO("Add support for $this")
+    else -> TODO("Add opensslPlatform support for $this")
   }
 
 
@@ -129,6 +130,7 @@ fun compileTask(target: KonanTarget): TaskProvider<Exec> {
 
   return tasks.register<Exec>("compile${target.displayNameCapitalized}") {
     dependsOn(configureTask)
+    environment(target.buildEnvironment)
 
     target.opensslPrefixDir.resolve("lib/libssl.a").exists().also {
       isEnabled = !it
@@ -143,6 +145,8 @@ kotlin {
   linuxX64()
   linuxArm64()
   linuxArm32Hfp()
+
+  mingwX64()
   macosX64()
 
   val buildAll by tasks.creating {

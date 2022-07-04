@@ -58,6 +58,7 @@ val KonanTarget.host: String
     KonanTarget.LINUX_ARM32_HFP -> "arm-unknown-linux-gnueabihf"
 
     KonanTarget.MACOS_X64 -> "darwin64-x86_64-cc"
+    KonanTarget.MINGW_X64 -> "x86_64-w64-mingw32"
 
 
     else -> TODO("Add host support for $this")
@@ -144,7 +145,9 @@ object BuildEnvironment {
       "GOPATH" to goCacheDir.resolve(displayName),
       "KONAN_DATA_DIR" to goCacheDir.resolve("konan"),
       "CFLAGS" to "-O3  -Wno-macro-redefined -Wno-deprecated-declarations -DOPENSSL_SMALL_FOOTPRINT=1",
-      "MAKE" to "make -j${Runtime.getRuntime().availableProcessors() + 1}",
+      "MAKE" to "make -j${Runtime.getRuntime().availableProcessors() + 1}".also {
+                                                                                println("MAKE = $it")
+      },
     ).also { env ->
       val path = buildPath.toMutableList()
 
@@ -157,7 +160,7 @@ object BuildEnvironment {
 
         KonanTarget.LINUX_ARM32_HFP -> {
           val clangArgs =
-            "--target=$host " + "--gcc-toolchain=$konanDir/dependencies/arm-unknown-linux-gnueabihf-gcc-8.3.0-glibc-2.19-kernel-4.9-2 " + "--sysroot=$konanDir/dependencies/arm-unknown-linux-gnueabihf-gcc-8.3.0-glibc-2.19-kernel-4.9-2/arm-unknown-linux-gnueabihf/sysroot "
+            "--target=$host --gcc-toolchain=$konanDir/dependencies/arm-unknown-linux-gnueabihf-gcc-8.3.0-glibc-2.19-kernel-4.9-2 " + "--sysroot=$konanDir/dependencies/arm-unknown-linux-gnueabihf-gcc-8.3.0-glibc-2.19-kernel-4.9-2/arm-unknown-linux-gnueabihf/sysroot "
           env["CC"] = "$clangBinDir/clang $clangArgs"
           env["CXX"] = "$clangBinDir/clang++ $clangArgs"
           //this["RANLIB"] = "/Users/dan/Library/Android/sdk/ndk/23.1.7779620//toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ranlib"
@@ -165,6 +168,7 @@ object BuildEnvironment {
         }
 
         KonanTarget.LINUX_ARM64 -> {
+          println("Configuring Linux ARM64 path here")
           val clangArgs = "--target=$host " +
               "--sysroot=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2/aarch64-unknown-linux-gnu/sysroot " +
               "--gcc-toolchain=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2 "
