@@ -135,16 +135,14 @@ fun compileTask(target: KonanTarget): TaskProvider<Exec> {
       configureTask.get().isEnabled = !it
     }
     workingDir(target.opensslSrcDir)
-
     commandLine("make", "install_sw")
-
-
   }
 }
 
 kotlin {
   linuxX64()
   linuxArm64()
+  linuxArm32Hfp()
   macosX64()
 
   val buildAll by tasks.creating {

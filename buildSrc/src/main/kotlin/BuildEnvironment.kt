@@ -34,7 +34,7 @@ val KonanTarget.goOS: GoOS
     Family.ANDROID -> GoOS.android
     Family.MINGW -> GoOS.windows
     Family.IOS, Family.OSX, Family.TVOS, Family.WATCHOS -> GoOS.darwin
-    else -> TODO("Add support for $this")
+    else -> TODO("Add goOS support for $this")
   }
 
 
@@ -44,7 +44,7 @@ val KonanTarget.goArch: GoArch
     Architecture.X86 -> GoArch.x86
     Architecture.ARM32 -> GoArch.arm
     Architecture.ARM64 -> GoArch.arm64
-    else -> TODO("Add support for $this")
+    else -> TODO("Add goArch support for $this")
   }
 
 val KonanTarget.goArm: Int
@@ -55,10 +55,12 @@ val KonanTarget.host: String
 
     KonanTarget.LINUX_X64 -> "x86_64-unknown-linux-gnu"
     KonanTarget.LINUX_ARM64 -> "aarch64-unknown-linux-gnu"
+    KonanTarget.LINUX_ARM32_HFP -> "arm-unknown-linux-gnueabihf"
 
     KonanTarget.MACOS_X64 -> "darwin64-x86_64-cc"
 
-    else -> TODO("Add support for $this")
+
+    else -> TODO("Add host support for $this")
   }
 
 object BuildEnvironment {
@@ -142,7 +144,7 @@ object BuildEnvironment {
       "GOPATH" to goCacheDir.resolve(displayName),
       "KONAN_DATA_DIR" to goCacheDir.resolve("konan"),
       "CFLAGS" to "-O3  -Wno-macro-redefined -Wno-deprecated-declarations -DOPENSSL_SMALL_FOOTPRINT=1",
-      "MAKE" to "make -j3",
+      "MAKE" to "make -j${Runtime.getRuntime().availableProcessors() + 1}",
     ).also { env ->
       val path = buildPath.toMutableList()
 
@@ -222,6 +224,9 @@ object BuildEnvironment {
           this["AR"] = "llvm-ar"
           this["RANLIB"] = "llvm-ranlib"
         }*/
+        else -> {
+          TODO("add buildEnvironment support for $this")
+        }
       }
 
       env["PATH"] = path.joinToString(File.pathSeparator)
