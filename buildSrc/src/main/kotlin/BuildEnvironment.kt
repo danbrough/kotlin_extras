@@ -125,7 +125,7 @@ object BuildEnvironment {
         androidNdkDir.resolve("toolchains/llvm/prebuilt/darwin-x86_64")
       else it
     }
-    if (!toolchainDir.exists()) throw Error("Failed to locate toolchain dir")
+    if (!toolchainDir.exists()) throw Error("Failed to locate toolchain dir at $toolchainDir")
     toolchainDir
   }
 
