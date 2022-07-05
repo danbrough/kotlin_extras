@@ -67,10 +67,10 @@ fun srcConfigure(target: KonanTarget): TaskProvider<Exec> {
     workingDir(target.srcDir)
     val command = """
 ./configure --with-openssl=${openSSLDir} --prefix=${target.prefixDir}  
---with-pic --enable-shared --enable-static --enable-libgcc --disable-dependency-tracking 
+--with-pic --enable-shared --enable-static 
 --disable-ftp --disable-gopher --disable-file --disable-imap --disable-ldap --disable-ldaps 
 --disable-pop3 --disable-proxy --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp 
---without-gnutls --without-librtmp 
+--without-gnutls 
       """.trim()
     doFirst {
       println("running command: $command")
