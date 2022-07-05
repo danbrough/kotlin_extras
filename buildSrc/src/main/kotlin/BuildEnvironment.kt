@@ -70,6 +70,17 @@ val KonanTarget.host: String
     else -> TODO("Add host support for $this")
   }
 
+
+val KonanTarget.androidLibDirName: String
+  get() = when (this) {
+    KonanTarget.ANDROID_X64 -> "x86"
+    KonanTarget.ANDROID_X64 -> "x86_64"
+    KonanTarget.ANDROID_ARM64 -> "arm64-v8a"
+    KonanTarget.ANDROID_ARM32 -> "armeabi-v7a"
+    else -> throw Error("$this is not an android target")
+  }
+
+
 object BuildEnvironment {
 
   val goBinary: String
@@ -110,14 +121,6 @@ object BuildEnvironment {
   val hostIsLinux: Boolean
     get() = System.getProperty("os.name").startsWith("Linux")
 
-  /* val hostPlatform: PlatformNative<*>
-     get() = when {
-       hostIsLinux -> PlatformNative.LinuxX64
-       hostIsMac -> PlatformNative.MacosX64
-       hostIsWindows -> PlatformNative.MingwX64
-       else -> throw Error("Host ${System.getProperty("os.name")}:${System.getProperty("os.arch")} not supported")
-     }
- */
 
   val androidToolchainDir by lazy {
     val toolchainDir = androidNdkDir.resolve("toolchains/llvm/prebuilt/linux-x86_64").let {
@@ -154,12 +157,8 @@ object BuildEnvironment {
       "MAKE" to "make -j${Runtime.getRuntime().availableProcessors() + 1}",
     ).also { env ->
       val path = buildPath.toMutableList()
-
-      //this["AR"] =  "$clangBinDir/llvm-ar"
       env["LD"] = "$clangBinDir/lld"
-      //this["RANLIB"] = "$clangBinDir/llvm-ar"
-
-
+      
       when (this) {
 
         KonanTarget.LINUX_ARM32_HFP -> {
@@ -248,187 +247,3 @@ object BuildEnvironment {
       env["PATH"] = path.joinToString(File.pathSeparator)
     }
 }
-
-/*
-
-enum class PlatformName {
-  Android,
-  AndroidNativeArm32, AndroidNativeArm64, AndroidNativeX64, AndroidNativeX86,
-  IosArm32, IosArm64, IosSimulatorArm64, IosX64,
-  JS, JsBoth, JsIr,
-  Jvm, JvmWithJava,
-  LinuxArm32Hfp, LinuxArm64, LinuxMips32, LinuxMipsel32, LinuxX64,
-  MacosArm64, MacosX64,
-  MingwX64, MingwX86,
-  TvosArm64, TvosSimulatorArm64, TvosX64,
-  Wasm, Wasm32,
-  WatchosArm32, WatchosArm64, WatchosSimulatorArm64, WatchosX64, WatchosX86;
-
-  override fun toString() = name.toString().decapitalize()
-
-  companion object {
-    fun forName(name: String): Platform<*> = when (valueOf(name)) {
-      Android -> TODO()
-      AndroidNativeArm32 -> PlatformAndroid.AndroidArm
-      AndroidNativeArm64 -> PlatformAndroid.AndroidArm64
-      AndroidNativeX64 -> PlatformAndroid.AndroidAmd64
-      AndroidNativeX86 -> PlatformAndroid.Android386
-      IosArm32 -> TODO()
-      IosArm64 -> TODO()
-      IosSimulatorArm64 -> TODO()
-      IosX64 -> PlatformNative.IosX64
-      JS -> TODO()
-      JsBoth -> TODO()
-      JsIr -> TODO()
-      Jvm -> TODO()
-      JvmWithJava -> TODO()
-      LinuxArm32Hfp -> PlatformNative.LinuxArm
-      LinuxArm64 -> PlatformNative.LinuxArm64
-      LinuxMips32 -> TODO()
-      LinuxMipsel32 -> TODO()
-      LinuxX64 -> TODO()
-      MacosArm64 -> PlatformNative.MacosArm64
-      MacosX64 -> PlatformNative.MacosX64
-      MingwX64 -> PlatformNative.MingwX64
-      MingwX86 -> TODO()
-      TvosArm64 -> TODO()
-      TvosSimulatorArm64 -> TODO()
-      TvosX64 -> TODO()
-      Wasm -> TODO()
-      Wasm32 -> TODO()
-      WatchosArm32 -> TODO()
-      WatchosArm64 -> TODO()
-      WatchosSimulatorArm64 -> TODO()
-      WatchosX64 -> TODO()
-      WatchosX86 -> TODO()
-    }
-  }
-
-}
-
-sealed class Platform<T : KotlinTarget>(
-  val name: PlatformName,
-) {
-  override fun toString() = name.toString()
-}
-
-
-open class PlatformNative<T : KotlinNativeTarget>(
-  name: PlatformName, val host: String, val goOS: GoOS, val goArch: GoArch, val goArm: Int = 7
-) : Platform<T>(name) {
-
-  val isAndroid = goOS == GoOS.android
-  val isLinux = goOS == GoOS.linux
-  val isWindows = goOS == GoOS.windows
-
-  object LinuxX64 : PlatformNative<KotlinNativeTargetWithHostTests>(
-    PlatformName.LinuxX64, "x86_64-unknown-linux-gnu", GoOS.linux, GoArch.amd64
-  )
-
-  object LinuxArm64 : PlatformNative<KotlinNativeTarget>(
-    PlatformName.LinuxArm64, "aarch64-unknown-linux-gnu", GoOS.linux, GoArch.arm64
-  )
-
-  object LinuxArm : PlatformNative<KotlinNativeTarget>(
-    PlatformName.LinuxArm32Hfp, "arm-unknown-linux-gnueabihf", GoOS.linux, GoArch.arm
-  )
-
-  object MingwX64 : PlatformNative<KotlinNativeTargetWithHostTests>(
-    PlatformName.MingwX64, "x86_64-w64-mingw32", GoOS.windows, GoArch.amd64
-  )
-
-  object MacosX64 : PlatformNative<KotlinNativeTargetWithHostTests>(
-    PlatformName.MacosX64, "darwin64-x86_64-cc", GoOS.darwin, GoArch.amd64
-  )
-
-  object IosX64 : PlatformNative<KotlinNativeTargetWithHostTests>(
-    PlatformName.MacosArm64, "darwin64-x86_64-cc", GoOS.darwin, GoArch.arm64
-  )
-
-  object MacosArm64 : PlatformNative<KotlinNativeTargetWithHostTests>(
-    PlatformName.MacosArm64, "darwin64-aarch64-cc", GoOS.darwin, GoArch.arm64
-  )
-}
-*/
-
-/*
-
-open class PlatformAndroid<T : KotlinNativeTarget>(
-  name: PlatformName,
-  host: String,
-  goOS: GoOS,
-  goArch: GoArch,
-  goArm: Int = 7,
-  val androidLibDir: String
-) : PlatformNative<T>(name, host, goOS, goArch, goArm) {
-
-  object AndroidArm : PlatformAndroid<KotlinNativeTarget>(
-    PlatformName.AndroidNativeArm32,
-
-    GoOS.android,
-    GoArch.arm,
-    androidLibDir = "armeabi-v7a"
-  )
-
-  object AndroidArm64 : PlatformAndroid<KotlinNativeTarget>(
-    PlatformName.AndroidNativeArm64,
-
-    GoOS.android,
-    GoArch.arm64,
-    androidLibDir = "arm64-v8a",
-  )
-
-  object Android386 : PlatformAndroid<KotlinNativeTarget>(
-    PlatformName.AndroidNativeX86,
-
-    GoOS.android,
-    GoArch.x86,
-    androidLibDir = "x86",
-  )
-
-  object AndroidAmd64 : PlatformAndroid<KotlinNativeTarget>(
-    PlatformName.AndroidNativeX64,
-
-    GoOS.android,
-    GoArch.amd64,
-    androidLibDir = "x86_64",
-  )
-}
-*/
-
-
-/*
-android
-androidNativeArm32
-androidNativeArm64
-androidNativeX64
-androidNativeX86
-iosArm32
-iosArm64
-iosSimulatorArm64
-iosX64
-js
-jsBoth
-jsIr
-jvm
-jvmWithJava
-linuxArm32Hfp
-linuxArm64
-linuxMips32
-linuxMipsel32
-linuxX64
-macosArm64
-macosX64
-mingwX64
-mingwX86
-tvosArm64
-tvosSimulatorArm64
-tvosX64
-wasm
-wasm32
-watchosArm32
-watchosArm64
-watchosSimulatorArm64
-watchosX64
-watchosX86
- */
