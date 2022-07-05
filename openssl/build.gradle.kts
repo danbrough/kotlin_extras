@@ -149,6 +149,7 @@ kotlin {
 
   if (BuildEnvironment.hostIsMac) {
     macosX64()
+    macosArm64()
   }
 
   androidNativeArm32()
