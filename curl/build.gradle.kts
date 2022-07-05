@@ -65,7 +65,7 @@ fun srcConfigure(target: KonanTarget): TaskProvider<Exec> {
     group = srcTaskGroup
     outputs.file(target.srcDir.resolve("Makefile"))
     workingDir(target.srcDir)
-    environment(target.buildEnvironment)
+//    environment(target.buildEnvironment)
 
     val command = """
 ./configure --with-openssl=${openSSLDir} --prefix=${target.prefixDir}  
