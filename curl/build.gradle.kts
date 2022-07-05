@@ -61,19 +61,22 @@ fun srcConfigure(target: KonanTarget): TaskProvider<Exec> {
   return tasks.register<Exec>("configure${target.displayNameCapitalized}") {
     val openSSLTask = tasks.getByPath(":openssl:compile${target.displayNameCapitalized}")
     val openSSLDir = openSSLTask.outputs.files.files.first().parentFile.parentFile
-    dependsOn(srcAutoConf,openSSLTask)
+    dependsOn(srcAutoConf, openSSLTask)
     group = srcTaskGroup
     outputs.file(target.srcDir.resolve("Makefile"))
     workingDir(target.srcDir)
-    commandLine(
-      """
+    val command = """
 ./configure --with-openssl=${openSSLDir} --prefix=${target.prefixDir}  
 --with-pic --enable-shared --enable-static --enable-libgcc --disable-dependency-tracking 
 --disable-ftp --disable-gopher --disable-file --disable-imap --disable-ldap --disable-ldaps 
 --disable-pop3 --disable-proxy --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp 
---without-gnutls --without-libidn --without-librtmp --disable-dic 
-      """.trim().split("\\s+".toRegex())
-    )
+--without-gnutls --without-librtmp 
+      """.trim()
+    doFirst {
+      println("running command: $command")
+    }
+
+    commandLine(command.split("\\s+".toRegex()))
   }
 }
 
