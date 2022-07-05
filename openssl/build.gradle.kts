@@ -4,7 +4,6 @@ import org.jetbrains.kotlin.konan.target.KonanTarget
 import org.jetbrains.kotlin.konan.target.Family
 
 //see: https://stackoverflow.com/questions/65397852/how-to-build-openssl-for-ios-and-osx
-
 plugins {
   kotlin("multiplatform")
   id("common")
@@ -119,7 +118,6 @@ fun configureTask(target: KonanTarget): TaskProvider<Exec> {
     //println("configuring with platform: ${platform.opensslPlatform}")
     //environment(BuildEnvironment.environment(platform))
 
-
     val env = target.buildEnvironment
 
     environment(env)
@@ -154,16 +152,18 @@ fun compileTask(target: KonanTarget): TaskProvider<Exec> {
   val configureTask = configureTask(target)
 
   return tasks.register<Exec>("compile${target.displayNameCapitalized}") {
-    dependsOn(configureTask)
+
     environment(target.buildEnvironment)
     workingDir(target.opensslSrcDir)
 
-    target.opensslPrefixDir.resolve("lib/libssl.a").exists().also {
-      isEnabled = !it
-      configureTask.get().isEnabled = !it
+    outputs.file(target.opensslPrefixDir.resolve("lib/libssl.a"))
+    isEnabled = false
+    if (!target.opensslPrefixDir.resolve("lib/libssl.a").exists()) {
+      dependsOn(configureTask)
+      isEnabled = true
     }
-    commandLine("make", "install_sw")
 
+    commandLine("make", "install_sw")
 
 
     doLast {
@@ -204,6 +204,15 @@ kotlin {
   targets.withType<KotlinNativeTarget>().all {
     compileTask(konanTarget).also {
       compileAll.dependsOn(it)
+    }
+
+    compilations["main"].apply {
+
+      cinterops.create("openssl") {
+        packageName("org.danbrough.openssl")
+        defFile(project.file("src/openssl.def"))
+        extraOpts(listOf("-libraryPath", konanTarget.opensslPrefixDir.resolve("lib")))
+      }
     }
 
   }
