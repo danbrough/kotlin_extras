@@ -59,13 +59,15 @@ fun srcAutoconf(target: KonanTarget): TaskProvider<Exec> {
 fun srcConfigure(target: KonanTarget): TaskProvider<Exec> {
   val srcAutoConf = srcAutoconf(target)
   return tasks.register<Exec>("configure${target.displayNameCapitalized}") {
-    dependsOn(srcAutoConf)
+    val openSSLTask = tasks.getByPath(":openssl:compile${target.displayNameCapitalized}")
+    val openSSLDir = openSSLTask.outputs.files.files.first().parentFile.parentFile
+    dependsOn(srcAutoConf,openSSLTask)
     group = srcTaskGroup
     outputs.file(target.srcDir.resolve("Makefile"))
     workingDir(target.srcDir)
     commandLine(
       """
-./configure --with-openssl --prefix=${target.prefixDir}  
+./configure --with-openssl=${openSSLDir} --prefix=${target.prefixDir}  
 --with-pic --enable-shared --enable-static --enable-libgcc --disable-dependency-tracking 
 --disable-ftp --disable-gopher --disable-file --disable-imap --disable-ldap --disable-ldaps 
 --disable-pop3 --disable-proxy --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp 
@@ -124,6 +126,7 @@ kotlin {
   androidNativeArm64()
   androidNativeX86()
   androidNativeX64()
+
   val compileAll by tasks.creating {
     group = BasePlugin.BUILD_GROUP
     description = "Builds curl for all available targets"
