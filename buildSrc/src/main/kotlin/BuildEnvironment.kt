@@ -158,7 +158,7 @@ object BuildEnvironment {
     ).also { env ->
       val path = buildPath.toMutableList()
       env["LD"] = "$clangBinDir/lld"
-      
+
       when (this) {
 
         KonanTarget.LINUX_ARM32_HFP -> {

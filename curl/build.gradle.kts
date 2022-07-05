@@ -1,3 +1,4 @@
+import BuildEnvironment.buildEnvironment
 import org.jetbrains.kotlin.builtins.konan.KonanBuiltIns
 import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
@@ -19,11 +20,10 @@ group = "org.danbrough"
 version = GIT_TAG.substringAfter('-').replace('_', '.')
 
 val KonanTarget.srcDir: File
-  get() = project.buildDir.resolve("curl/$version/$displayName")
+  get() = project.buildDir.resolve("src/$version/$displayName")
 
 val KonanTarget.prefixDir: File
   get() = project.file("lib/$displayName")
-
 
 val gitSrcDir = project.buildDir.resolve("curl.git")
 val srcTaskGroup = "Source"
@@ -34,34 +34,25 @@ val srcClone by tasks.registering(Exec::class) {
   onlyIf { !gitSrcDir.exists() }
 }
 
-
-fun srcPrepare(target: KonanTarget): TaskProvider<Exec> {
-
-  return tasks.register("srcPrepare${target.displayName.capitalize()}", Exec::class) {
+fun srcPrepare(target: KonanTarget): TaskProvider<Exec> =
+  tasks.register("srcPrepare${target.displayName.capitalize()}", Exec::class) {
     group = srcTaskGroup
     val srcDir = target.srcDir
     dependsOn(srcClone)
-    onlyIf { !srcDir.exists() }
+    outputs.dir(target.srcDir)
     commandLine(BuildEnvironment.gitBinary, "clone", "--branch", GIT_TAG, gitSrcDir, srcDir)
-
-    finalizedBy("srcAutoconf${target.displayName.capitalizeAsciiOnly()}")
   }
-}
+
 
 fun srcAutoconf(target: KonanTarget): TaskProvider<Exec> {
   val srcPrepare = srcPrepare(target)
 
   return tasks.register("srcAutoconf${target.displayName.capitalize()}", Exec::class) {
-    doFirst {
-      println("running autoconf in ${target.srcDir}")
-    }
+    outputs.file(target.srcDir.resolve("configure"))
     group = srcTaskGroup
+    dependsOn(srcPrepare)
     workingDir(target.srcDir)
     commandLine("autoreconf", "-fi")
-    onlyIf {
-      srcPrepare.get().didWork
-    }
-    dependsOn(srcPrepare)
   }
 }
 
@@ -69,11 +60,12 @@ fun srcConfigure(target: KonanTarget): TaskProvider<Exec> {
   val srcAutoConf = srcAutoconf(target)
   return tasks.register<Exec>("configure${target.displayNameCapitalized}") {
     dependsOn(srcAutoConf)
-    onlyIf { srcAutoConf.get().didWork }
+    group = srcTaskGroup
+    outputs.file(target.srcDir.resolve("Makefile"))
     workingDir(target.srcDir)
     commandLine(
       """
-./configure  --with-openssl --prefix=${target.prefixDir}  
+./configure --with-openssl --prefix=${target.prefixDir}  
 --with-pic --enable-shared --enable-static --enable-libgcc --disable-dependency-tracking 
 --disable-ftp --disable-gopher --disable-file --disable-imap --disable-ldap --disable-ldaps 
 --disable-pop3 --disable-proxy --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp 
@@ -83,15 +75,29 @@ fun srcConfigure(target: KonanTarget): TaskProvider<Exec> {
   }
 }
 
-
-fun compile(target: KonanTarget): TaskProvider<Exec> {
+fun compileTask(target: KonanTarget): TaskProvider<Exec> {
   val srcConfigure = srcConfigure(target)
   return tasks.register<Exec>("compile${target.displayNameCapitalized}") {
-    dependsOn(srcConfigure)
-    environment("MAKE" to "make -j3")
+    environment(target.buildEnvironment)
     workingDir(target.srcDir)
-    onlyIf { !target.prefixDir.exists() }
+    outputs.file(target.prefixDir.resolve("lib/libcurl.a"))
+    isEnabled = false
+    if (!target.prefixDir.resolve("lib/libcurl.a").exists()) {
+      dependsOn(srcConfigure)
+      isEnabled = true
+    }
+
     commandLine("make", "install")
+    doLast {
+      println("FINISHED .. getting executing result ..")
+      executionResult.get().also {
+        println("EXEC RESULT: $it")
+        if (it.exitValue == 0 && target.srcDir.exists()) {
+          println("DELETING: ${target.srcDir}")
+          target.srcDir.deleteRecursively()
+        }
+      }
+    }
   }
 }
 
@@ -107,16 +113,26 @@ kotlin {
   linuxX64()
   linuxArm64()
   linuxArm32Hfp()
-  macosArm64()
-  macosX64()
-  iosX64()
-  iosArm64()
-  iosSimulatorArm64()
 
+  mingwX64()
+
+  if (BuildEnvironment.hostIsMac) {
+    macosX64()
+  }
+
+  androidNativeArm32()
+  androidNativeArm64()
+  androidNativeX86()
+  androidNativeX64()
+  val compileAll by tasks.creating {
+    group = BasePlugin.BUILD_GROUP
+    description = "Builds curl for all available targets"
+  }
 
   targets.withType<KotlinNativeTarget>().all {
-    //println("Setting up target: ${konanTarget.displayNameCapitalized}")
-    compile(konanTarget)
+    compileTask(konanTarget).also {
+      compileAll.dependsOn(it)
+    }
   }
 
 }
