@@ -40,6 +40,7 @@ fun srcPrepare(target: KonanTarget): TaskProvider<Exec> =
     val srcDir = target.srcDir
     dependsOn(srcClone)
     outputs.dir(target.srcDir)
+    onlyIf { !srcDir.exists() }
     commandLine(BuildEnvironment.gitBinary, "clone", "--branch", GIT_TAG, gitSrcDir, srcDir)
   }
 
@@ -101,7 +102,7 @@ fun compileTask(target: KonanTarget): TaskProvider<Exec> {
         println("EXEC RESULT: $it")
         if (it.exitValue == 0 && target.srcDir.exists()) {
           println("DELETING: ${target.srcDir}")
-          target.srcDir.deleteRecursively()
+          // target.srcDir.deleteRecursively()
         }
       }
     }

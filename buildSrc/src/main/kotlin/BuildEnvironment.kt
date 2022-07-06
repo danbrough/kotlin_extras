@@ -230,6 +230,7 @@ object BuildEnvironment {
           env["CXX"] = "${host}${androidNdkApiVersion}-clang++"
           env["AR"] = "llvm-ar"
           env["RANLIB"] = "llvm-ranlib"
+          env["LD"] = "ld"
         }
 /*
         PlatformAndroid.AndroidArm, PlatformAndroid.Android386, PlatformAndroid.AndroidArm64, PlatformAndroid.AndroidAmd64 -> {

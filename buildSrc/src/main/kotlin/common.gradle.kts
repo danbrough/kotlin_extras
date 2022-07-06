@@ -32,11 +32,6 @@ object GoLib {
 
 }*/
 
-object OpenSSL {
-
-
-
-}
 
 abstract class GreetingTask : DefaultTask() {
   @get:Input
