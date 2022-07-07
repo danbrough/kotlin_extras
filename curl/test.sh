@@ -4,7 +4,7 @@ cd `dirname $0`/build/src/7.84.0/androidArm64/ || exit
 
 openSSLDir=/home/dan/workspace/kotlin/kotlin_extras/openssl/lib/androidArm64/
 host=aarch64-unknown-linux-gnu
-MAKE="make -j5"
+export MAKE="make -j5"
 if [ ! -f Makefile ]; then
 ./configure --with-openssl=${openSSLDir} --prefix=/tmp/curl   --host=${host} \
 --with-pic --enable-shared --enable-static  \

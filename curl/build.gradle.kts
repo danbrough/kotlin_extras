@@ -87,7 +87,7 @@ fun srcConfigure(target: KonanTarget): TaskProvider<Exec> {
 fun compileTask(target: KonanTarget): TaskProvider<Exec> {
   val srcConfigure = srcConfigure(target)
   return tasks.register<Exec>("compile${target.displayNameCapitalized}") {
-    environment(target.buildEnvironment)
+    //environment(target.buildEnvironment)
     workingDir(target.srcDir)
     outputs.file(target.prefixDir.resolve("lib/libcurl.a"))
     isEnabled = false
@@ -95,6 +95,7 @@ fun compileTask(target: KonanTarget): TaskProvider<Exec> {
       dependsOn(srcConfigure)
       isEnabled = true
     }
+    environment("MAKE","make -j5")
 
     commandLine("make", "install")
     doLast {
