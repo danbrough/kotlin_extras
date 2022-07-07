@@ -57,7 +57,7 @@ val KonanTarget.host: String
     KonanTarget.LINUX_ARM64 -> "aarch64-unknown-linux-gnu"
     KonanTarget.LINUX_ARM32_HFP -> "arm-unknown-linux-gnueabihf"
 
-    KonanTarget.MACOS_X64, KonanTarget.IOS_X64 -> "darwin64-x86_64"
+    KonanTarget.MACOS_X64, KonanTarget.IOS_X64 -> "darwin64-x86_64-clang"
     KonanTarget.MACOS_ARM64, KonanTarget.IOS_ARM64, KonanTarget.IOS_SIMULATOR_ARM64 -> "darwin64-aarch64"
 
     KonanTarget.MINGW_X64 -> "x86_64-w64-mingw32"
