@@ -25,7 +25,7 @@ val KonanTarget.srcDir: File
 val KonanTarget.prefixDir: File
   get() = project.file("lib/$displayName")
 
-val gitSrcDir = rootProject.file("src/curl.git")
+val gitSrcDir = rootProject.file("git/curl.git")
 val srcTaskGroup = "Source"
 
 val srcClone by tasks.registering(Exec::class) {

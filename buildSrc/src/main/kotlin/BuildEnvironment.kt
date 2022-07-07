@@ -110,6 +110,7 @@ object BuildEnvironment {
 
   val androidNdkApiVersion: Int
     get() = ProjectProperties.getProperty("android.ndk.api.version", "23").toInt()
+
   val buildPath: List<String>
     get() = ProjectProperties.getProperty("build.path").split("[\\s]+".toRegex())
 
