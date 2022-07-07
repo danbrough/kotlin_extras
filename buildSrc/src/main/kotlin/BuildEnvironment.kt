@@ -172,7 +172,6 @@ object BuildEnvironment {
         }
 
         KonanTarget.LINUX_ARM64 -> {
-          println("Configuring Linux ARM64 path here")
           val clangArgs =
             "--target=$host --sysroot=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2/aarch64-unknown-linux-gnu/sysroot " + "--gcc-toolchain=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2 "
           env["CC"] = "$clangBinDir/clang $clangArgs"
