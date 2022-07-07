@@ -66,10 +66,10 @@ fun srcConfigure(target: KonanTarget): TaskProvider<Exec> {
     group = srcTaskGroup
     outputs.file(target.srcDir.resolve("Makefile"))
     workingDir(target.srcDir)
-//    environment(target.buildEnvironment)
+    //environment(target.buildEnvironment)
 
     val command = """
-./configure --with-openssl=${openSSLDir} --prefix=${target.prefixDir}  
+./configure --with-openssl=${openSSLDir} --prefix=${target.prefixDir}  --host=${target.host}
 --with-pic --enable-shared --enable-static 
 --disable-ftp --disable-gopher --disable-file --disable-imap --disable-ldap --disable-ldaps 
 --disable-pop3 --disable-proxy --disable-rtsp --disable-smb --disable-smtp --disable-telnet --disable-tftp 
@@ -77,6 +77,7 @@ fun srcConfigure(target: KonanTarget): TaskProvider<Exec> {
       """.trim()
     doFirst {
       println("running command: $command")
+      //println("path: ${environment["PATH"]}")
     }
 
     commandLine(command.split("\\s+".toRegex()))

@@ -124,8 +124,7 @@ object BuildEnvironment {
 
   val androidToolchainDir by lazy {
     val toolchainDir = androidNdkDir.resolve("toolchains/llvm/prebuilt/linux-x86_64").let {
-      if (!it.exists())
-        androidNdkDir.resolve("toolchains/llvm/prebuilt/darwin-x86_64")
+      if (!it.exists()) androidNdkDir.resolve("toolchains/llvm/prebuilt/darwin-x86_64")
       else it
     }
     if (!toolchainDir.exists()) throw Error("Failed to locate toolchain dir at $toolchainDir")
@@ -135,8 +134,7 @@ object BuildEnvironment {
   val clangBinDir by lazy {
     File("$konanDir/dependencies").listFiles()?.first {
       it.isDirectory && it.name.contains("essentials")
-    }?.resolve("bin")
-      ?: throw Error("Failed to locate clang folder in ${konanDir}/dependencies")
+    }?.resolve("bin") ?: throw Error("Failed to locate clang folder in ${konanDir}/dependencies")
   }
 
   fun buildEnvironment(target: KonanTarget): Map<String, Any> = target.buildEnvironment
@@ -157,7 +155,9 @@ object BuildEnvironment {
       "MAKE" to "make -j${Runtime.getRuntime().availableProcessors() + 1}",
     ).also { env ->
       val path = buildPath.toMutableList()
+
       env["LD"] = "$clangBinDir/lld"
+
 
       when (this) {
 
@@ -173,17 +173,18 @@ object BuildEnvironment {
         KonanTarget.LINUX_ARM64 -> {
           println("Configuring Linux ARM64 path here")
           val clangArgs =
-            "--target=$host --sysroot=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2/aarch64-unknown-linux-gnu/sysroot " +
-                "--gcc-toolchain=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2 "
+            "--target=$host --sysroot=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2/aarch64-unknown-linux-gnu/sysroot " + "--gcc-toolchain=$konanDir/dependencies/aarch64-unknown-linux-gnu-gcc-8.3.0-glibc-2.25-kernel-4.9-2 "
           env["CC"] = "$clangBinDir/clang $clangArgs"
           env["CXX"] = "$clangBinDir/clang++ $clangArgs"
         }
 
         KonanTarget.LINUX_X64 -> {
           val clangArgs =
-            "--target=$host --gcc-toolchain=$konanDir/dependencies/x86_64-unknown-linux-gnu-gcc-8.3.0-glibc-2.19-kernel-4.9-2 " + "--sysroot=$konanDir/dependencies/x86_64-unknown-linux-gnu-gcc-8.3.0-glibc-2.19-kernel-4.9-2/x86_64-unknown-linux-gnu/sysroot"
+            "--target=$host --gcc-toolchain=$konanDir/dependencies/x86_64-unknown-linux-gnu-gcc-8.3.0-glibc-2.19-kernel-4.9-2 " +
+                "--sysroot=$konanDir/dependencies/x86_64-unknown-linux-gnu-gcc-8.3.0-glibc-2.19-kernel-4.9-2/x86_64-unknown-linux-gnu/sysroot"
           env["CC"] = "$clangBinDir/clang $clangArgs"
           env["CXX"] = "$clangBinDir/clang++ $clangArgs"
+
 /*        this["RANLIB"] =
           "$konanDir/dependencies/x86_64-unknown-linux-gnu-gcc-8.3.0-glibc-2.19-kernel-4.9-2/x86_64-unknown-linux-gnu/bin/ranlib"*/
         }
@@ -226,11 +227,28 @@ object BuildEnvironment {
 
         KonanTarget.ANDROID_ARM32, KonanTarget.ANDROID_ARM64, KonanTarget.ANDROID_X86, KonanTarget.ANDROID_X64 -> {
           path.add(0, androidToolchainDir.resolve("bin").absolutePath)
-          env["CC"] = "${host}${androidNdkApiVersion}-clang"
-          env["CXX"] = "${host}${androidNdkApiVersion}-clang++"
+          val prefix ="${host}${androidNdkApiVersion}"
+          env["CC"] = "$prefix-clang"
+          env["CXX"] = "$prefix-clang++"
+          env["AS"] = "$prefix-as"
           env["AR"] = "llvm-ar"
           env["RANLIB"] = "llvm-ranlib"
-          env["LD"] = "ld"
+/*
+          export HOST=arm-unknown-linux-gnueabihf
+export CROSS_PREFIX=arm-unknown-linux-gnueabihf
+export CC=$CROSS_PREFIX-gcc
+export CPP=$CROSS_PREFIX-cpp
+export CXX=$CROSS_PREFIX-c++
+export AR=$CROSS_PREFIX-ar
+export AS=$CROSS_PREFIX-as
+export RANDLIB=$CROSS_PREFIX-randlib
+export STRIP=$CROSS_PREFIX-strip
+export LD=$CROSS_PREFIX-ld
+*/
+
+          //env["AR"] = "llvm-ar"
+          //env["RANLIB"] = "llvm-ranlib"
+          // env["LD"] = "ld"
         }
 /*
         PlatformAndroid.AndroidArm, PlatformAndroid.Android386, PlatformAndroid.AndroidArm64, PlatformAndroid.AndroidAmd64 -> {
@@ -244,7 +262,7 @@ object BuildEnvironment {
           TODO("add buildEnvironment support for $this")
         }
       }
-
       env["PATH"] = path.joinToString(File.pathSeparator)
+
     }
 }
