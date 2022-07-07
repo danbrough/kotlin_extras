@@ -31,7 +31,7 @@ val KonanTarget.opensslPlatform
   }
 
 
-val opensslGitDir = project.buildDir.resolve("openssl.git")
+val opensslGitDir = rootProject.file("src/openssl.git")
 
 val KonanTarget.opensslSrcDir: File
   get() = project.buildDir.resolve("src/$version/$displayName")

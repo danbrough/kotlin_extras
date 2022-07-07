@@ -21,7 +21,7 @@
 /.ssh
 /.conan
 /kipfs_local.properties
-
+/src/*
 
 /local.properties
 /local_*.env
